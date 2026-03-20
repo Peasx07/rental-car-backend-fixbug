@@ -13,24 +13,10 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @route   POST /api/v1/auth/register
 exports.register = async (req, res, next) => {
     try {
-        // --- ดักการทำงาน: ห้าม Register ถ้าล็อกอินอยู่แล้ว ---
-        let token;
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-            token = req.headers.authorization.split(' ')[1];
-        } else if (req.cookies.token) {
-            token = req.cookies.token;
-        }
-
-        if (token && token !== 'none') {
-            try {
-                jwt.verify(token, process.env.JWT_SECRET);
-                return res.status(400).json({ success: false, message: 'You are already logged in. Please log out first before registering a new account.' });
-            } catch (err) {}
-        }
-        // ---------------------------------------------
-
+        // ลบส่วนที่ดัก "You are already logged in" ออกไปเลยครับ
         const { name, telephone, email, password, role } = req.body;
         const user = await User.create({ name, telephone, email, password, role });
+        
         res.status(201).json({
             success: true,
             message: "Registration successful. Please log in."
@@ -41,36 +27,27 @@ exports.register = async (req, res, next) => {
 };
 
 // @desc    Login user
-// @route   POST /api/v1/auth/login
 exports.login = async (req, res, next) => {
     try {
-        // --- ดักการทำงาน: ห้าม Login ซ้อนถ้ามี Token ที่ยังใช้งานได้อยู่ ---
-        let token;
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-            token = req.headers.authorization.split(' ')[1];
-        } else if (req.cookies.token) {
-            token = req.cookies.token;
-        }
-
-        if (token && token !== 'none') {
-            try {
-                jwt.verify(token, process.env.JWT_SECRET);
-                return res.status(400).json({ success: false, message: 'You are already logged in. Please log out first before switching accounts.' });
-            } catch (err) {
-                // ถ้า Token หมดอายุหรือไม่ถูกต้อง ก็ปล่อยผ่านให้เข้าสู่กระบวนการ Login ปกติ
-            }
-        }
-        // ---------------------------------------------
-
+        // ลบส่วนที่ดัก "You are already logged in" ออกไปเช่นกันครับ
+        // เพื่อให้ถ้าเขากรอกรหัสใหม่ เราจะทับคุกกี้เก่าให้ทันที
+        
         const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ success: false, message: 'Please provide an email and password' });
+        if (!email || !password) {
+            return res.status(400).json({ success: false, message: 'Please provide an email and password' });
+        }
 
         const user = await User.findOne({ email }).select('+password');
-        if (!user) return res.status(400).json({ success: false, message: 'Invalid credentials' });
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'Invalid credentials' });
+        }
 
         const isMatch = await user.matchPassword(password);
-        if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
 
+        // ฟังก์ชันนี้จะไปเซ็ตคุกกี้ใหม่ทับอันเดิมให้เองครับ
         sendTokenResponse(user, 200, res);
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
@@ -80,16 +57,20 @@ exports.login = async (req, res, next) => {
 // @desc    Log user out / clear cookie
 // @route   GET /api/v1/auth/logout
 exports.logout = async (req, res, next) => {
-    // สั่งเซิร์ฟเวอร์ลบ Cookie (แทนที่ด้วยค่า none และให้หมดอายุทันที)
     res.cookie('token', 'none', { 
         expires: new Date(Date.now() + 10 * 1000), 
         httpOnly: true 
     });
+    res.status(200).json({ success: true, message: 'Logged out!' });
+};
 
-    // ส่ง Response กลับไปให้ Client เพื่อให้ฝั่ง Client เคลียร์ Token ทิ้งด้วย
-    res.status(200).json({ 
-        success: true, 
-        message: 'Logged out successfully. Token is cleared.',
-        data: {} 
-    });
+// @desc    Get current logged in user
+// @route   GET /api/v1/auth/me
+exports.getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    res.status(200).json({ success: true, data: user });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
 };

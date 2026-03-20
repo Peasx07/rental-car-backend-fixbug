@@ -45,7 +45,11 @@ app.use(limiter);
 app.use(hpp());
 
 // Enable CORS (อนุญาตให้ Frontend ต่างโดเมนเรียกใช้ API ได้)
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000', // อนุญาตเฉพาะ Frontend ของเรา
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true // ยอมรับการส่ง Cookies / Token จาก Frontend
+}));
 // ==========================
 
 // Mount routers
