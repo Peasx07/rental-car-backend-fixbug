@@ -7,16 +7,16 @@ const sendTokenResponse = (user, statusCode, res) => {
     const options = {
         expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000),
         httpOnly: true,
-        // --- เพิ่ม 2 บรรทัดนี้เพื่อรองรับการ Deploy จริง ---
-        secure: true,      // บังคับส่งผ่าน HTTPS เท่านั้น
-        sameSite: 'none'   // อนุญาตให้ส่ง Cookie ข้ามโดเมน (Render -> Vercel)
+        secure: true,      // 🚨 สำคัญมาก: ต้องส่งผ่าน HTTPS
+        sameSite: 'none',   // 🚨 สำคัญมาก: ต้องอนุญาตให้ข้ามโดเมน
+        path: '/'          // 🚨 เพิ่มอันนี้เข้าไปเพื่อให้คุกกี้ใช้ได้ทุกหน้า
     };
 
     res.status(statusCode)
-       .cookie('token', token, options) // ใช้ตัวแปร options ที่เราตั้งไว้
+       .cookie('token', token, options) 
        .json({ 
            success: true, 
-           token 
+           token // ส่ง token ไปใน body ด้วยเผื่อกรณีคุกกี้มีปัญหา
        });
 };
 
