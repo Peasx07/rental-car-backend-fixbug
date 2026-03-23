@@ -49,11 +49,24 @@ app.use(limiter);
 app.use(hpp());
 
 // Enable CORS (อนุญาตให้ Frontend ต่างโดเมนเรียกใช้ API ได้)
-const rawOrigins = process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '';
-const allowlist = rawOrigins
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+const normalizeOrigin = (value) => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    try {
+        return new URL(trimmed).origin.toLowerCase();
+    } catch {
+        // fallback เผื่อ env พิมพ์ไม่ครบรูปแบบ URL
+        return trimmed.replace(/\/+$/, '').toLowerCase();
+    }
+};
+
+const envOrigins = [
+    ...(process.env.CORS_ORIGINS || '').split(','),
+    process.env.FRONTEND_URL || '',
+].map(normalizeOrigin).filter(Boolean);
+
+const allowlist = Array.from(new Set(envOrigins));
 const allowVercelPreview = process.env.ALLOW_VERCEL_PREVIEW === 'true';
 
 // dev fallback
@@ -66,8 +79,10 @@ app.use(cors({
         // allow same-origin / server-to-server / tools without Origin header
         if (!origin) return callback(null, true);
 
-        if (allowlist.includes(origin)) return callback(null, true);
-        if (allowVercelPreview && origin.endsWith('.vercel.app')) return callback(null, true);
+        const normalizedRequestOrigin = normalizeOrigin(origin);
+
+        if (allowlist.includes(normalizedRequestOrigin)) return callback(null, true);
+        if (allowVercelPreview && normalizedRequestOrigin.endsWith('.vercel.app')) return callback(null, true);
         return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
