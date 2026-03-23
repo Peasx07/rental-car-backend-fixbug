@@ -26,6 +26,10 @@ connectDB();
 
 const app = express();
 
+app.get('/', (req, res) => {
+    res.status(200).json({ success: true, message: "Backend is awake!" });
+});
+
 // Body parser
 app.use(express.json());
 
@@ -46,7 +50,8 @@ app.use(hpp());
 
 // Enable CORS (อนุญาตให้ Frontend ต่างโดเมนเรียกใช้ API ได้)
 app.use(cors({
-    origin: 'http://localhost:3000', // อนุญาตเฉพาะ Frontend ของเรา
+    // เปลี่ยนมาใช้ค่าจาก .env ถ้าไม่มีให้ใช้ localhost:3000
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000', 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true // ยอมรับการส่ง Cookies / Token จาก Frontend
 }));
