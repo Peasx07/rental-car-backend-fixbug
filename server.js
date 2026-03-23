@@ -42,7 +42,8 @@ app.use(helmet());
 app.use(xss());
 const limiter = rateLimit({
     windowMs: 10 * 60 * 1000, 
-    max: 100
+    max: 100,
+    skip: (req) => req.method === 'OPTIONS'
 });
 app.use(limiter);
 
@@ -51,7 +52,7 @@ app.use(hpp());
 // Enable CORS (อนุญาตให้ Frontend ต่างโดเมนเรียกใช้ API ได้)
 const normalizeOrigin = (value) => {
     if (!value) return '';
-    const trimmed = value.trim();
+    const trimmed = value.trim().replace(/^['"]|['"]$/g, '');
     if (!trimmed) return '';
     try {
         return new URL(trimmed).origin.toLowerCase();
@@ -67,14 +68,14 @@ const envOrigins = [
 ].map(normalizeOrigin).filter(Boolean);
 
 const allowlist = Array.from(new Set(envOrigins));
-const allowVercelPreview = process.env.ALLOW_VERCEL_PREVIEW === 'true';
+const allowVercelPreview = (process.env.ALLOW_VERCEL_PREVIEW || '').toLowerCase() === 'true';
 
 // dev fallback
 if (allowlist.length === 0) {
     allowlist.push('http://localhost:3000', 'http://127.0.0.1:3000');
 }
 
-app.use(cors({
+const corsOptions = {
     origin: (origin, callback) => {
         // allow same-origin / server-to-server / tools without Origin header
         if (!origin) return callback(null, true);
@@ -88,7 +89,10 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true // ยอมรับการส่ง Cookies / Token จาก Frontend
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 // ==========================
 
 // Mount routers

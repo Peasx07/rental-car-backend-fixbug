@@ -26,6 +26,25 @@ exports.getCars = async (req, res, next) => {
     }
 };
 
+// @desc    Get single car
+// @route   GET /api/v1/cars/:id
+exports.getCar = async (req, res, next) => {
+    try {
+        const car = await Car.findById(req.params.id).populate({
+            path: 'provider',
+            select: 'name address telephone'
+        });
+
+        if (!car) {
+            return res.status(404).json({ success: false, message: `No car with id ${req.params.id}` });
+        }
+
+        res.status(200).json({ success: true, data: car });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};
+
 // @desc    Add a car
 // @route   POST /api/v1/providers/:providerId/cars
 exports.createCar = async (req, res, next) => {
