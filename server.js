@@ -49,10 +49,29 @@ app.use(limiter);
 app.use(hpp());
 
 // Enable CORS (อนุญาตให้ Frontend ต่างโดเมนเรียกใช้ API ได้)
+const rawOrigins = process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '';
+const allowlist = rawOrigins
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const allowVercelPreview = process.env.ALLOW_VERCEL_PREVIEW === 'true';
+
+// dev fallback
+if (allowlist.length === 0) {
+    allowlist.push('http://localhost:3000', 'http://127.0.0.1:3000');
+}
+
 app.use(cors({
-    // เปลี่ยนมาใช้ค่าจาก .env ถ้าไม่มีให้ใช้ localhost:3000
-    origin: 'https://rental-car-frontend-final-eter.vercel.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: (origin, callback) => {
+        // allow same-origin / server-to-server / tools without Origin header
+        if (!origin) return callback(null, true);
+
+        if (allowlist.includes(origin)) return callback(null, true);
+        if (allowVercelPreview && origin.endsWith('.vercel.app')) return callback(null, true);
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true // ยอมรับการส่ง Cookies / Token จาก Frontend
 }));
 // ==========================
