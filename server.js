@@ -30,6 +30,8 @@ app.get('/', (req, res) => {
     res.status(200).json({ success: true, message: "Backend is awake!" });
 });
 
+app.set('trust proxy', 1);
+
 // Body parser
 app.use(express.json());
 
